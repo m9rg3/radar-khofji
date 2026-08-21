@@ -1,5 +1,6 @@
 import base64
 import datetime
+import urllib.parse
 import folium
 import requests
 import streamlit as st
@@ -10,8 +11,8 @@ from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 
 # --- 1. إعدادات الصفحة والتطبيق ---
-st.set_page_config(page_title="رادار الخفجي الجيل الخامس V5.3 Ultimate", layout="centered", page_icon="🦅")
-st.title("🦅 رادار الخفجي الذكي - V5.3 Radar & Mute Controls")
+st.set_page_config(page_title="رادار الخفجي الجيل الخامس V5.5 Pro", layout="centered", page_icon="🦅")
+st.title("🦅 رادار الخفجي الذكي - V5.5 Pure Radar & Audio Alert")
 
 # --- 2. الدوال الأمنية والتشفير ---
 def derive_crypto_key(pin):
@@ -31,19 +32,27 @@ if "user_email" not in st.session_state:
     st.session_state["user_email"] = "alddhmshi@gmail.com"
 if "crypto_key" not in st.session_state:
     st.session_state["crypto_key"] = derive_crypto_key("2087")
-if "play_sound_url" not in st.session_state:
-    st.session_state["play_sound_url"] = None
 
-# --- 4. دالة تشغيل وكتم المشغل الصوتي ---
-def render_audio_player():
-    if st.session_state["play_sound_url"]:
-        sound_html = f"""
-            <audio autoplay controls style="width: 100%;">
-                <source src="{st.session_state['play_sound_url']}" type="audio/mp3">
-                المتصفح لا يدعم تشغيل الصوت.
-            </audio>
-        """
-        st.components.v1.html(sound_html, height=60)
+# --- 4. دالة أصدار الصوت التنبيهي (Web Audio API Beep) ---
+def trigger_native_audio_alert():
+    sound_js = """
+    <script>
+    function playBeep() {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime); // تردد النغمة
+        gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.6); // مدة الصوت 0.6 ثانية
+    }
+    playBeep();
+    </script>
+    """
+    st.components.v1.html(sound_js, height=0)
 
 # --- 5. جلب بيانات الطقس ودوال الحساب الجوي ---
 API_KEY = "29ea16b1dcef9de9338b290ab132c6c8" 
@@ -79,7 +88,7 @@ def calculate_landing_probability(wind_speed, hour):
     return min(score, 100)
 
 def generate_gpx(waypoints):
-    gpx = """<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="KhofjiRadarV53">\n"""
+    gpx = """<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="KhofjiRadarV55">\n"""
     for wpt in waypoints:
         gpx += f'  <wpt lat="{wpt["lat"]}" lon="{wpt["lon"]}"><name>{wpt["name"]}</name><desc>{wpt["desc"]}</desc></wpt>\n'
     gpx += "</gpx>"
@@ -102,7 +111,7 @@ if not st.session_state["secure_logged_in"]:
         else:
             st.error("⚠️ بيانات الدخول غير صحيحة.")
 
-# --- 7. الواجهة الرئيسية V5.3 ---
+# --- 7. الواجهة الرئيسية V5.5 ---
 else:
     st.sidebar.success(f"🔓 المستكشف: {st.session_state['user_email']}")
     if st.sidebar.button("قفل النظام"):
@@ -134,17 +143,39 @@ else:
     c2.metric("💨 سرعة الرياح", f"{weather['wind_speed']:.1f} كم/س")
     c3.metric("🧭 اتجاه الهواء", wind_dir)
 
-    # --- زر التنبيه الفوري عند مشاهدة طير ---
+    # --- إرسال تنبيه رصد/مشاهدة طير صوتي وكتابي ---
     st.markdown("#### 📡 إرسال تنبيه إشارة طرح/مشاهدة طير عاجل")
     col_a, col_b = st.columns([2, 1])
     with col_a:
         bird_type = st.selectbox("نوع الطير المرصود:", ["شاهين بحري", "حر تام", "وكري", "شرياص / جلاميد", "طيور أخرى"])
     with col_b:
-        if st.button("📢 بث التنبيه"):
-            map_link = f"https://www.google.com/maps/search/?api=1&query={my_lat},{my_lon}"
-            alert_msg = f"🚨 **تنبيه رصد طير!**\nالنوع: {bird_type}\nالموقع: {map_link}"
-            st.code(alert_msg, language="markdown")
-            st.success("تم تجهيز التنبيه! يمكنك نسخته وإرساله فوراً.")
+        st.write("")
+        st.write("")
+        btn_alert = st.button("📢 بث التنبيه مع الصوت")
+
+    map_link = f"https://www.google.com/maps/search/?api=1&query={my_lat},{my_lon}"
+    alert_text = f"🚨 تنبيه رصد/طرح طير!\nالنوع: {bird_type}\nالموقع: {map_link}"
+    encoded_text = urllib.parse.quote(alert_text)
+    whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_text}"
+
+    if btn_alert:
+        # 1. إطلاق التنبيه الصوتي المباشر
+        trigger_native_audio_alert()
+        
+        # 2. عرض الإشعار الكتابي المباشر
+        st.error(f"🔔 **إشعار عاجل:** تم تسجيل رصد ({bird_type}) بالموقع بنجاح!")
+        st.code(alert_text, language="markdown")
+        st.markdown(f'''
+            <a href="{whatsapp_url}" target="_blank" style="
+                background-color: #25D366;
+                color: white;
+                padding: 10px 20px;
+                text-decoration: none;
+                border-radius: 8px;
+                font-weight: bold;
+                display: inline-block;
+                margin-top: 5px;">📲 مشاركة التنبيه والموقع عبر الواتساب فوراً</a>
+        ''', unsafe_allow_html=True)
 
     # --- قاعدة بيانات المعابر ---
     all_passages = [
@@ -171,47 +202,15 @@ else:
 
     st_folium(m, width=700, height=450)
 
-    # --- مكتبة الأصوات والتصدير مع خيار الكتم ---
-    st.markdown("### 🛠️ الملاحة البرية والمؤثرات الصوتية")
-    col_gpx, col_sound = st.columns(2)
-
-    with col_gpx:
-        st.markdown("#### 📂 ملف الإحداثيات للملاحة (OsmAnd / Garmin)")
-        st.download_button(
-            label="⬇️ تحميل GPX لجميع المعابر",
-            data=generate_gpx(all_passages),
-            file_name="Khofji_Passages.gpx",
-            mime="application/gpx+xml"
-        )
-
-    with col_sound:
-        st.markdown("#### 🔊 مكتبة أصوات البر والتحكم بالصوت")
-        sound_choice = st.selectbox("اختر الصوت المراد تشغيله:", [
-            "🔊 صفارة طوارئ وإنذار عالي (SOS Warning Siren)",
-            "🦅 أصوات حداء وتغاريد طيور برية",
-            "📢 نداء استجذاب وتدريب صقور"
-        ])
-        
-        btn_play, btn_mute = st.columns(2)
-        
-        with btn_play:
-            if st.button("▶️ تشغيل الصوت"):
-                if "صفارة" in sound_choice:
-                    st.session_state["play_sound_url"] = "https://www.soundjay.com/buttons/sounds/beep-07a.mp3"
-                elif "تغاريد" in sound_choice:
-                    st.session_state["play_sound_url"] = "https://www.soundjay.com/nature/sounds/birds-1.mp3"
-                else:
-                    st.session_state["play_sound_url"] = "https://www.soundjay.com/nature/sounds/eagle-cry-1.mp3"
-                st.rerun()
-
-        with btn_mute:
-            if st.button("🔇 كتم الصوت / إيقاف"):
-                st.session_state["play_sound_url"] = None
-                st.success("تم كتم الصوت.")
-                st.rerun()
-
-        # عرض مشغل الصوت إذا كان مفعلاً
-        render_audio_player()
+    # --- التصدير والملاحة ---
+    st.markdown("### 🛠️ الملاحة البرية وتحميل البيانات")
+    st.markdown("#### 📂 ملف الإحداثيات للملاحة (OsmAnd / Garmin)")
+    st.download_button(
+        label="⬇️ تحميل GPX لجميع المعابر",
+        data=generate_gpx(all_passages),
+        file_name="Khofji_Passages.gpx",
+        mime="application/gpx+xml"
+    )
 
     cipher = Fernet(st.session_state["crypto_key"])
     encrypted_coords = cipher.encrypt(f"{my_lat},{my_lon}".encode()).decode()
