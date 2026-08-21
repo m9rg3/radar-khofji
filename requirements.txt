@@ -1,7 +1,10 @@
 streamlit
-bcrypt
-cryptography
 requests
 folium
 streamlit-folium
-streamlit_js_eval
+bcrypt
+cryptography
+streamlit-js-eval
+supabase
+qrcode
+Pillow
