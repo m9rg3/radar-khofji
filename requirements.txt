@@ -2,3 +2,5 @@ streamlit
 bcrypt
 cryptography
 requests
+folium
+streamlit-folium
