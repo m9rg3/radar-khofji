@@ -146,7 +146,7 @@ else:
     m = folium.Map(location=[my_lat, my_lon], zoom_start=11, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
     folium.TileLayer(tiles="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png", attr="Carto", name="الأسماء", overlay=True).add_to(m)
 
-    folium.Marker([my_lat, my_lon], popup="موقعك الحالي", icon=folium.Icon(color="blue", icon="car", prefix="fa")).add_to(m)
+    folium.Marker([my_lat, my_lon], popup=f"موقعك الحالي:<br>Lat: {my_lat:.5f}<br>Lon: {my_lon:.5f}", icon=folium.Icon(color="blue", icon="car", prefix="fa")).add_to(m)
 
     for wpt, color in zip([target_10, target_9, target_8], ["#00ff66", "#ffaa00", "#ffff00"]):
         folium.Rectangle(
