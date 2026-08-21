@@ -16,13 +16,7 @@ from streamlit_js_eval import get_geolocation
 st.set_page_config(page_title="رادار الخفجي الجيل الخامس V5.1 Ultimate", layout="centered", page_icon="🦅")
 st.title("🦅 رادار الخفجي الذكي - V5.1 Ultimate Pro")
 
-# --- 2. تهيئة حالات الجلسة (Session State) ---
-if "secure_logged_in" not in st.session_state:
-    st.session_state["secure_logged_in"] = False
-if "user_email" not in st.session_state:
-    st.session_state["user_email"] = ""
-
-# --- 3. الدوال الأمنية والتشفير ---
+# --- 2. الدوال الأمنية والتشفير ---
 def derive_crypto_key(pin):
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -32,6 +26,15 @@ def derive_crypto_key(pin):
     )
     derived = kdf.derive(pin.encode())
     return base64.urlsafe_b64encode(derived)
+
+# --- 3. تهيئة حالات الجلسة (Session State) ---
+# تفعيل الدخول الافتراضي فور فتح التطبيق لتفادي تعليق الشاشة
+if "secure_logged_in" not in st.session_state:
+    st.session_state["secure_logged_in"] = True
+if "user_email" not in st.session_state:
+    st.session_state["user_email"] = "alddhmshi@gmail.com"
+if "crypto_key" not in st.session_state:
+    st.session_state["crypto_key"] = derive_crypto_key("2087")
 
 # --- 4. جلب بيانات الطقس وتوليد ملفات الملاحة والـ QR ---
 API_KEY = "29ea16b1dcef9de9338b290ab132c6c8" 
