@@ -187,11 +187,25 @@ else:
         icon=folium.Icon(color="blue", icon="car", prefix="fa")
     ).add_to(m)
 
-    # رسم جميع المعابر على الخريطة بأيقونات مخصصة
+    # رسم جميع المعابر على الخريطة مع زر التوجيه المباشر عبر خرائط جوجل
     for site in all_passages:
+        google_maps_url = f"https://www.google.com/maps/dir/?api=1&destination={site['lat']},{site['lon']}"
+        popup_html = f"""
+            <b>{site['name']}</b><br>
+            {site['desc']}<br>
+            📍 Lat: {site['lat']:.4f} | Lon: {site['lon']:.4f}<br><br>
+            <a href="{google_maps_url}" target="_blank" style="
+                background-color: #28a745;
+                color: white;
+                padding: 6px 12px;
+                text-decoration: none;
+                border-radius: 5px;
+                font-weight: bold;
+                display: inline-block;">🧭 بدء التوجيه (Google Maps)</a>
+        """
         folium.Marker(
             [site["lat"], site["lon"]],
-            popup=f"<b>{site['name']}</b><br>{site['desc']}<br>📍 Lat: {site['lat']:.4f} | Lon: {site['lon']:.4f}",
+            popup=popup_html,
             icon=folium.Icon(color="red", icon="crosshairs", prefix="fa")
         ).add_to(m)
 
@@ -202,7 +216,7 @@ else:
     col_gpx, col_qr = st.columns(2)
 
     with col_gpx:
-        st.markdown("#### 📂 ملف الإحداثيات للملاحة (GPX)")
+        st.markdown("#### 📂 ملف الإحداثيات للملاحة (OsmAnd والقارمن)")
         gpx_data = generate_gpx(all_passages)
         st.download_button(
             label="⬇️ تحميل GPX لجميع المعابر (OsmAnd والقارمن)",
