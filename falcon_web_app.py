@@ -89,12 +89,14 @@ if not st.session_state["secure_logged_in"]:
     
     if st.button("تفعيل النظام القيادي"):
         email_clean = email.strip().lower()
+        pass_clean = password.strip()
+        pin_clean = input_pin.strip()
         
         ALLOWED_EMAIL = "alddhmshi@gmail.com"
         ALLOWED_PASS = "Khofji2026"
         ALLOWED_PIN = "2087"
         
-        if email_clean == ALLOWED_EMAIL and password == ALLOWED_PASS and input_pin == ALLOWED_PIN:
+        if email_clean == ALLOWED_EMAIL and pass_clean == ALLOWED_PASS and pin_clean == ALLOWED_PIN:
             st.session_state["secure_logged_in"] = True
             st.session_state["user_email"] = email_clean
             st.session_state["crypto_key"] = derive_crypto_key(ALLOWED_PIN)
@@ -146,7 +148,11 @@ else:
     m = folium.Map(location=[my_lat, my_lon], zoom_start=11, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
     folium.TileLayer(tiles="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png", attr="Carto", name="الأسماء", overlay=True).add_to(m)
 
-    folium.Marker([my_lat, my_lon], popup=f"موقعك الحالي:<br>Lat: {my_lat:.5f}<br>Lon: {my_lon:.5f}", icon=folium.Icon(color="blue", icon="car", prefix="fa")).add_to(m)
+    folium.Marker(
+        [my_lat, my_lon], 
+        popup=f"موقعك الحالي:<br>Lat: {my_lat:.5f}<br>Lon: {my_lon:.5f}", 
+        icon=folium.Icon(color="blue", icon="car", prefix="fa")
+    ).add_to(m)
 
     for wpt, color in zip([target_10, target_9, target_8], ["#00ff66", "#ffaa00", "#ffff00"]):
         folium.Rectangle(
@@ -154,6 +160,7 @@ else:
             color=color, fill=True, fill_opacity=0.3, weight=2,
             popup=f"<b>{wpt['name']}</b><br>{wpt['desc']}<br>📍 Lat: {wpt['lat']:.5f} | Lon: {wpt['lon']:.5f}"
         ).add_to(m)
+
     st_folium(m, width=700, height=450)
 
     # --- تصدير البيانات وأدوات السلامة البرية ---
