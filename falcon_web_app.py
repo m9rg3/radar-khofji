@@ -147,33 +147,55 @@ else:
     else:
         st.success("🌙 **فترة المبيت والحجر:** الطيور تنزل للأرض وتستقر في الأشجار أو التلاع المحمية من الهواء. استخدم كشافات المقناص في المربعات الخضراء.")
 
+    # --- قاعدة بيانات المعابر الكلية (الخفجي والمناطق المجاورة + السعودية) ---
+    all_passages = [
+        # --- معابر الخفجي والمناطق المجاورة القريبة ---
+        {"lat": 28.0833, "lon": 48.6167, "name": "معبر رأس مشعاب (الخفجي)", "desc": "خط عبور رئيسي للشواهين البحرية القادمة من الشمال"},
+        {"lat": 28.4380, "lon": 48.4970, "name": "ساحل الخفجي الشمالي", "desc": "شريط ساحلي لترصد وطرح الشواهين"},
+        {"lat": 28.1500, "lon": 48.5333, "name": "معبر الأبرق (غرب الخفجي)", "desc": "منطقة حجر ومأوى بري حيوية بين الخفجي والكويت"},
+        {"lat": 28.3167, "lon": 48.7833, "name": "خور الخفجي والزور", "desc": "نقطة تجمع الطيور الساحلية والمائية"},
+        {"lat": 28.3833, "lon": 48.1667, "name": "أبرق الكبريت (غرب الخفجي)", "desc": "أرض صحراوية مرتفعة ممتازة للحرار"},
+        {"lat": 28.3667, "lon": 48.8000, "name": "معبر السفانية الساحلي", "desc": "خط هجرة محاذٍ للساحل يتجه جنوباً"},
+        {"lat": 27.6000, "lon": 48.4833, "name": "معبر النعيرية (وادي المياه)", "desc": "محطة مبيت ومقناص شهيرة للصقارين"},
+        {"lat": 28.4333, "lon": 45.9667, "name": "فياض خباري حفر الباطن", "desc": "محطة مبيت ومقناص حجر جوي ممتازة"},
+        
+        # --- معابر المملكة العربية السعودية الرئيسية ---
+        {"lat": 30.9833, "lon": 40.5000, "name": "صحراء الحماد (عرعر)", "desc": "أشهر موقع عالمي لطرح الصقور والحرار"},
+        {"lat": 31.2833, "lon": 39.9167, "name": "حزم الجلاميد (عرعر)", "desc": "معبر وموقع شبك ومبيت استراتيجي"},
+        {"lat": 26.9000, "lon": 47.1000, "name": "فياض الصمان العليا", "desc": "مرتفعات وفياض محمية للمقناص والمبيت"},
+        {"lat": 28.7000, "lon": 43.5000, "name": "رفحاء (محمية التيسية)", "desc": "مسار هجرة الحبارى والصقور"},
+        {"lat": 30.5000, "lon": 38.2000, "name": "طبرجل وبسيطاء (الجوف)", "desc": "مدخل الهجرة القادمة من الأردن"},
+        {"lat": 24.7500, "lon": 50.7500, "name": "عروق سلوى (الشرقية)", "desc": "معبر الطيور المتجهة للجنوب"},
+        {"lat": 28.6500, "lon": 35.3500, "name": "جبل اللوز (تبوك)", "desc": "مسار المرتفعات والتيارات الهوائية"},
+        {"lat": 20.2167, "lon": 40.0167, "name": "معبر المجيرمة (الغربية)", "desc": "موقع طرح الشواهين الشهير على البحر الأحمر"}
+    ]
+
     # --- مستشار الذكاء الاصطناعي ---
     st.markdown("### 🧠 المستشار التضاريسي المباشر")
-    target_10 = {"lat": my_lat + 0.085, "lon": my_lon - 0.105, "name": "مربع 10 - فياض الطلح", "desc": "ملاءمة 98% للمبيت"}
-    target_9 = {"lat": my_lat + 0.135, "lon": my_lon - 0.045, "name": "مربع 9 - الحجر الجوي", "desc": "تلاع جبلية محمية"}
-    target_8 = {"lat": my_lat + 0.035, "lon": my_lon - 0.145, "name": "مربع 8 - بطون الأودية", "desc": "ممر عبور رئيسي"}
-
-    st.write(f"🦅 **التوصية:** توجه نحو `{target_10['name']}`؛ حيث تشير التحليلات التضاريسية لارتفاع نسبة ملاءمة الاختباء والمبيت بنسبة 95%.")
+    target_10 = all_passages[0] # رأس مشعاب
+    st.write(f"🦅 **التوصية:** توجه نحو `{target_10['name']}`؛ حيث تشير التحليلات التضاريسية لارتفاع نسبة ملاءمة العبور والطرح بنسبة 95%.")
 
     # --- الخريطة التفاعلية ---
-    st.markdown("### 🗺️ خريطة المقناص والأقمار الصناعية")
-    m = folium.Map(location=[my_lat, my_lon], zoom_start=11, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
+    st.markdown("### 🗺️ خريطة المقناص والأقمار الصناعية والمعابر الشاملة")
+    m = folium.Map(location=[my_lat, my_lon], zoom_start=8, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
     folium.TileLayer(tiles="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png", attr="Carto", name="الأسماء", overlay=True).add_to(m)
 
+    # علامة موقعك الحالي
     folium.Marker(
         [my_lat, my_lon], 
         popup=f"موقعك الحالي:<br>Lat: {my_lat:.5f}<br>Lon: {my_lon:.5f}", 
         icon=folium.Icon(color="blue", icon="car", prefix="fa")
     ).add_to(m)
 
-    for wpt, color in zip([target_10, target_9, target_8], ["#00ff66", "#ffaa00", "#ffff00"]):
-        folium.Rectangle(
-            bounds=[[wpt["lat"] - 0.012, wpt["lon"] - 0.012], [wpt["lat"] + 0.012, wpt["lon"] + 0.012]],
-            color=color, fill=True, fill_opacity=0.3, weight=2,
-            popup=f"<b>{wpt['name']}</b><br>{wpt['desc']}<br>📍 Lat: {wpt['lat']:.5f} | Lon: {wpt['lon']:.5f}"
+    # رسم جميع المعابر على الخريطة بأيقونات مخصصة
+    for site in all_passages:
+        folium.Marker(
+            [site["lat"], site["lon"]],
+            popup=f"<b>{site['name']}</b><br>{site['desc']}<br>📍 Lat: {site['lat']:.4f} | Lon: {site['lon']:.4f}",
+            icon=folium.Icon(color="red", icon="crosshairs", prefix="fa")
         ).add_to(m)
 
-    st_folium(m, width=700, height=450)
+    st_folium(m, width=700, height=480)
 
     # --- تصدير البيانات وأدوات السلامة البرية ---
     st.markdown("### 🛠️ أدوات السلامة والتصدير البري")
@@ -181,18 +203,18 @@ else:
 
     with col_gpx:
         st.markdown("#### 📂 ملف الإحداثيات للملاحة (GPX)")
-        gpx_data = generate_gpx([target_10, target_9, target_8])
+        gpx_data = generate_gpx(all_passages)
         st.download_button(
-            label="⬇️ تحميل GPX لـ OsmAnd والقارمن",
+            label="⬇️ تحميل GPX لجميع المعابر (OsmAnd والقارمن)",
             data=gpx_data,
-            file_name=f"Khofji_V5_Waypoints.gpx",
+            file_name=f"Saudi_Khofji_Passages.gpx",
             mime="application/gpx+xml"
         )
 
     with col_qr:
         st.markdown("#### 🚨 رمز الاستغاثة البري (SOS Offline)")
         if st.button("توليد QR Code للطوارئ"):
-            # تشغيل صوت تنبيه الطوارئ عند الضغط على الزر
+            # تشغيل صوت تنبيه الطوارئ
             play_audio_alert("https://www.soundjay.com/buttons/sounds/beep-07a.mp3")
             
             qr_bytes = generate_sos_qr(my_lat, my_lon, st.session_state["user_email"])
