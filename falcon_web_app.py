@@ -1,20 +1,17 @@
 import base64
 import datetime
-import io
 import folium
-import qrcode
 import requests
 import streamlit as st
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from PIL import Image
 from streamlit_folium import st_folium
 from streamlit_js_eval import get_geolocation
 
 # --- 1. إعدادات الصفحة والتطبيق ---
-st.set_page_config(page_title="رادار الخفجي الجيل الخامس V5.1 Ultimate", layout="centered", page_icon="🦅")
-st.title("🦅 رادار الخفجي الذكي - V5.1 Ultimate Pro")
+st.set_page_config(page_title="رادار الخفجي الجيل الخامس V5.3 Ultimate", layout="centered", page_icon="🦅")
+st.title("🦅 رادار الخفجي الذكي - V5.3 Radar & Mute Controls")
 
 # --- 2. الدوال الأمنية والتشفير ---
 def derive_crypto_key(pin):
@@ -34,18 +31,21 @@ if "user_email" not in st.session_state:
     st.session_state["user_email"] = "alddhmshi@gmail.com"
 if "crypto_key" not in st.session_state:
     st.session_state["crypto_key"] = derive_crypto_key("2087")
+if "play_sound_url" not in st.session_state:
+    st.session_state["play_sound_url"] = None
 
-# --- 4. دالة التنبيه الصوتي ---
-def play_audio_alert(audio_url):
-    sound_html = f"""
-        <iframe src="{audio_url}" allow="autoplay" style="display:none" id="iframeAudio"></iframe>
-        <audio autoplay>
-            <source src="{audio_url}" type="audio/mp3">
-        </audio>
-    """
-    st.components.v1.html(sound_html, height=0)
+# --- 4. دالة تشغيل وكتم المشغل الصوتي ---
+def render_audio_player():
+    if st.session_state["play_sound_url"]:
+        sound_html = f"""
+            <audio autoplay controls style="width: 100%;">
+                <source src="{st.session_state['play_sound_url']}" type="audio/mp3">
+                المتصفح لا يدعم تشغيل الصوت.
+            </audio>
+        """
+        st.components.v1.html(sound_html, height=60)
 
-# --- 5. جلب بيانات الطقس وتوليد ملفات الملاحة والـ QR ---
+# --- 5. جلب بيانات الطقس ودوال الحساب الجوي ---
 API_KEY = "29ea16b1dcef9de9338b290ab132c6c8" 
 
 def get_live_weather(lat, lon):
@@ -59,7 +59,7 @@ def get_live_weather(lat, lon):
             "desc": response["weather"][0]["description"]
         }
     except Exception:
-        return {"temp": 18.0, "wind_speed": 12.0, "wind_deg": 315, "desc": "صافي"}
+        return {"temp": 18.0, "wind_speed": 22.0, "wind_deg": 315, "desc": "شمالية نشطة"}
 
 def get_wind_direction_string(deg):
     if 337.5 <= deg or deg < 22.5: return "شمالي قاصف ⬇️"
@@ -71,53 +71,38 @@ def get_wind_direction_string(deg):
     if 247.5 <= deg < 292.5: return "غربي شديد ➡️"
     return "شمالي غربي ↘️"
 
+def calculate_landing_probability(wind_speed, hour):
+    score = 0
+    if wind_speed > 20: score += 40
+    if wind_speed > 35: score += 30
+    if 5 <= hour <= 7 or 16 <= hour <= 18: score += 30
+    return min(score, 100)
+
 def generate_gpx(waypoints):
-    gpx = """<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="KhofjiRadarV51">\n"""
+    gpx = """<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="KhofjiRadarV53">\n"""
     for wpt in waypoints:
         gpx += f'  <wpt lat="{wpt["lat"]}" lon="{wpt["lon"]}"><name>{wpt["name"]}</name><desc>{wpt["desc"]}</desc></wpt>\n'
     gpx += "</gpx>"
     return gpx
 
-def generate_sos_qr(lat, lon, email):
-    google_maps_url = f"https://maps.google.com/?q={lat},{lon}"
-    sos_text = f"🚨 نداء استغاثة بري!\nالمستخدم: {email}\nالموقع: {lat:.5f}, {lon:.5f}\nرابط الخريطة: {google_maps_url}"
-    
-    qr = qrcode.QRCode(version=1, box_size=8, border=2)
-    qr.add_data(sos_text)
-    qr.make(fit=True)
-    img = qr.make_image(fill_color="black", back_color="white")
-    
-    buf = io.BytesIO()
-    img.save(buf)
-    return buf.getvalue()
-
-# --- 6. شاشة المصادقة والدخول السريعة المباشرة ---
+# --- 6. شاشة المصادقة والدخول ---
 if not st.session_state["secure_logged_in"]:
     st.subheader("🔐 تسجيل الدخول ونظام حماية البر")
-    
     email = st.text_input("البريد الإلكتروني", key="l_email")
     password = st.text_input("الرقم السري", type="password", key="l_pass")
     input_pin = st.text_input("رقم التشفير (PIN):", type="password", max_chars=4, key="l_pin")
     
     if st.button("تفعيل النظام القيادي"):
-        email_clean = email.strip().lower()
-        pass_clean = password.strip()
-        pin_clean = input_pin.strip()
-        
-        ALLOWED_EMAIL = "alddhmshi@gmail.com"
-        ALLOWED_PASS = "Khofji2026"
-        ALLOWED_PIN = "2087"
-        
-        if email_clean == ALLOWED_EMAIL and pass_clean == ALLOWED_PASS and pin_clean == ALLOWED_PIN:
+        if email.strip().lower() == "alddhmshi@gmail.com" and password.strip() == "Khofji2026" and input_pin.strip() == "2087":
             st.session_state["secure_logged_in"] = True
-            st.session_state["user_email"] = email_clean
-            st.session_state["crypto_key"] = derive_crypto_key(ALLOWED_PIN)
+            st.session_state["user_email"] = email.strip().lower()
+            st.session_state["crypto_key"] = derive_crypto_key("2087")
             st.success("تم الدخول بنجاح!")
             st.rerun()
         else:
             st.error("⚠️ بيانات الدخول غير صحيحة.")
 
-# --- 7. الواجهة الرئيسية V5.1 Ultimate ---
+# --- 7. الواجهة الرئيسية V5.3 ---
 else:
     st.sidebar.success(f"🔓 المستكشف: {st.session_state['user_email']}")
     if st.sidebar.button("قفل النظام"):
@@ -129,6 +114,18 @@ else:
 
     weather = get_live_weather(my_lat, my_lon)
     wind_dir = get_wind_direction_string(weather["wind_deg"])
+    current_hour = datetime.datetime.now().hour
+    landing_score = calculate_landing_probability(weather["wind_speed"], current_hour)
+
+    # --- نظام التنبيهات المباشر (BIRD LANDING ALERT) ---
+    st.markdown("### 🚨 نظام التنبيهات المباشر لرصد ونزول الطيور")
+    
+    if landing_score >= 70:
+        st.error(f"🚨 **تنبيه عالي (احتمالية نزول الطيور {landing_score}%):** الأحوال الجوية (سرعة الرياح {weather['wind_speed']:.1f} كم/س) والوقت الحالي يشيران إلى ترجيح نزول وحطّ الصقور والطيور المهاجرة في الأشجار والفياض!")
+    elif landing_score >= 40:
+        st.warning(f"⚠️ **تنبيه متوسط (احتمالية نزول الطيور {landing_score}%):** حركة عبور نشطة، يُنصح بمراقبة العوالق والتلاع المفتوحة.")
+    else:
+        st.success(f"✅ **الوضع هادئ (احتمالية النزول {landing_score}%):** الطيور في حالة تحليق عالي أو عبور مستمر.")
 
     # --- لوحة الأرصاد والتحكم الزمني ---
     st.markdown("### 📊 خانة الأرصاد والمحاكاة المستقبلية")
@@ -137,104 +134,85 @@ else:
     c2.metric("💨 سرعة الرياح", f"{weather['wind_speed']:.1f} كم/س")
     c3.metric("🧭 اتجاه الهواء", wind_dir)
 
-    st.markdown("#### ⏳ محاكاة نسيم القمراء وسلوك الصقور (خلال 24 ساعة):")
-    selected_hour = st.slider("اختر الساعة المستهدفة للاستكشاف:", 0, 23, datetime.datetime.now().hour)
-    
-    if 5 <= selected_hour <= 8:
-        st.info("🌅 **فترة البكر والمطير:** الطيور تبدأ بالتحرك من المبيت بحثاً عن الأعلاف. ركّز على أطراف الفياض والمربعات المفتوحة.")
-    elif 9 <= selected_hour <= 15:
-        st.warning("☀️ **فترة التحليق والشواهين:** ارتفاع حرارة الجو يُنشّط التيارات الهوائية الصاعدة (Thermals). الصقور تحلق بارتفاعات عالية جداً.")
-    else:
-        st.success("🌙 **فترة المبيت والحجر:** الطيور تنزل للأرض وتستقر في الأشجار أو التلاع المحمية من الهواء. استخدم كشافات المقناص في المربعات الخضراء.")
+    # --- زر التنبيه الفوري عند مشاهدة طير ---
+    st.markdown("#### 📡 إرسال تنبيه إشارة طرح/مشاهدة طير عاجل")
+    col_a, col_b = st.columns([2, 1])
+    with col_a:
+        bird_type = st.selectbox("نوع الطير المرصود:", ["شاهين بحري", "حر تام", "وكري", "شرياص / جلاميد", "طيور أخرى"])
+    with col_b:
+        if st.button("📢 بث التنبيه"):
+            map_link = f"https://www.google.com/maps/search/?api=1&query={my_lat},{my_lon}"
+            alert_msg = f"🚨 **تنبيه رصد طير!**\nالنوع: {bird_type}\nالموقع: {map_link}"
+            st.code(alert_msg, language="markdown")
+            st.success("تم تجهيز التنبيه! يمكنك نسخته وإرساله فوراً.")
 
-    # --- قاعدة بيانات المعابر الكلية (الخفجي والمناطق المجاورة + السعودية) ---
+    # --- قاعدة بيانات المعابر ---
     all_passages = [
-        # --- معابر الخفجي والمناطق المجاورة القريبة ---
-        {"lat": 28.0833, "lon": 48.6167, "name": "معبر رأس مشعاب (الخفجي)", "desc": "خط عبور رئيسي للشواهين البحرية القادمة من الشمال"},
+        {"lat": 28.0833, "lon": 48.6167, "name": "معبر رأس مشعاب (الخفجي)", "desc": "خط عبور رئيسي للشواهين البحرية"},
         {"lat": 28.4380, "lon": 48.4970, "name": "ساحل الخفجي الشمالي", "desc": "شريط ساحلي لترصد وطرح الشواهين"},
-        {"lat": 28.1500, "lon": 48.5333, "name": "معبر الأبرق (غرب الخفجي)", "desc": "منطقة حجر ومأوى بري حيوية بين الخفجي والكويت"},
-        {"lat": 28.3167, "lon": 48.7833, "name": "خور الخفجي والزور", "desc": "نقطة تجمع الطيور الساحلية والمائية"},
+        {"lat": 28.1500, "lon": 48.5333, "name": "معبر الأبرق (غرب الخفجي)", "desc": "منطقة حجر ومأوى بري حيوية"},
         {"lat": 28.3833, "lon": 48.1667, "name": "أبرق الكبريت (غرب الخفجي)", "desc": "أرض صحراوية مرتفعة ممتازة للحرار"},
-        {"lat": 28.3667, "lon": 48.8000, "name": "معبر السفانية الساحلي", "desc": "خط هجرة محاذٍ للساحل يتجه جنوباً"},
-        {"lat": 27.6000, "lon": 48.4833, "name": "معبر النعيرية (وادي المياه)", "desc": "محطة مبيت ومقناص شهيرة للصقارين"},
-        {"lat": 28.4333, "lon": 45.9667, "name": "فياض خباري حفر الباطن", "desc": "محطة مبيت ومقناص حجر جوي ممتازة"},
-        
-        # --- معابر المملكة العربية السعودية الرئيسية ---
+        {"lat": 27.6000, "lon": 48.4833, "name": "معبر النعيرية (وادي المياه)", "desc": "محطة مبيت ومقناص شهيرة"},
         {"lat": 30.9833, "lon": 40.5000, "name": "صحراء الحماد (عرعر)", "desc": "أشهر موقع عالمي لطرح الصقور والحرار"},
-        {"lat": 31.2833, "lon": 39.9167, "name": "حزم الجلاميد (عرعر)", "desc": "معبر وموقع شبك ومبيت استراتيجي"},
-        {"lat": 26.9000, "lon": 47.1000, "name": "فياض الصمان العليا", "desc": "مرتفعات وفياض محمية للمقناص والمبيت"},
-        {"lat": 28.7000, "lon": 43.5000, "name": "رفحاء (محمية التيسية)", "desc": "مسار هجرة الحبارى والصقور"},
-        {"lat": 30.5000, "lon": 38.2000, "name": "طبرجل وبسيطاء (الجوف)", "desc": "مدخل الهجرة القادمة من الأردن"},
-        {"lat": 24.7500, "lon": 50.7500, "name": "عروق سلوى (الشرقية)", "desc": "معبر الطيور المتجهة للجنوب"},
-        {"lat": 28.6500, "lon": 35.3500, "name": "جبل اللوز (تبوك)", "desc": "مسار المرتفعات والتيارات الهوائية"},
         {"lat": 20.2167, "lon": 40.0167, "name": "معبر المجيرمة (الغربية)", "desc": "موقع طرح الشواهين الشهير على البحر الأحمر"}
     ]
 
-    # --- مستشار الذكاء الاصطناعي ---
-    st.markdown("### 🧠 المستشار التضاريسي المباشر")
-    target_10 = all_passages[0] # رأس مشعاب
-    st.write(f"🦅 **التوصية:** توجه نحو `{target_10['name']}`؛ حيث تشير التحليلات التضاريسية لارتفاع نسبة ملاءمة العبور والطرح بنسبة 95%.")
-
     # --- الخريطة التفاعلية ---
-    st.markdown("### 🗺️ خريطة المقناص والأقمار الصناعية والمعابر الشاملة")
+    st.markdown("### 🗺️ خريطة المقناص والمعابر الشاملة")
     m = folium.Map(location=[my_lat, my_lon], zoom_start=8, tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", attr="Esri")
     folium.TileLayer(tiles="https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}{r}.png", attr="Carto", name="الأسماء", overlay=True).add_to(m)
 
-    # علامة موقعك الحالي
-    folium.Marker(
-        [my_lat, my_lon], 
-        popup=f"موقعك الحالي:<br>Lat: {my_lat:.5f}<br>Lon: {my_lon:.5f}", 
-        icon=folium.Icon(color="blue", icon="car", prefix="fa")
-    ).add_to(m)
+    folium.Marker([my_lat, my_lon], popup="موقعك الحالي", icon=folium.Icon(color="blue", icon="car", prefix="fa")).add_to(m)
 
-    # رسم جميع المعابر على الخريطة مع زر التوجيه المباشر عبر خرائط جوجل
     for site in all_passages:
-        google_maps_url = f"https://www.google.com/maps/dir/?api=1&destination={site['lat']},{site['lon']}"
-        popup_html = f"""
-            <b>{site['name']}</b><br>
-            {site['desc']}<br>
-            📍 Lat: {site['lat']:.4f} | Lon: {site['lon']:.4f}<br><br>
-            <a href="{google_maps_url}" target="_blank" style="
-                background-color: #28a745;
-                color: white;
-                padding: 6px 12px;
-                text-decoration: none;
-                border-radius: 5px;
-                font-weight: bold;
-                display: inline-block;">🧭 بدء التوجيه (Google Maps)</a>
-        """
-        folium.Marker(
-            [site["lat"], site["lon"]],
-            popup=popup_html,
-            icon=folium.Icon(color="red", icon="crosshairs", prefix="fa")
-        ).add_to(m)
+        gmaps = f"https://www.google.com/maps/dir/?api=1&destination={site['lat']},{site['lon']}"
+        popup_html = f"<b>{site['name']}</b><br>{site['desc']}<br><br><a href='{gmaps}' target='_blank'>🧭 التوجيه</a>"
+        folium.Marker([site["lat"], site["lon"]], popup=popup_html, icon=folium.Icon(color="red", icon="crosshairs", prefix="fa")).add_to(m)
 
-    st_folium(m, width=700, height=480)
+    st_folium(m, width=700, height=450)
 
-    # --- تصدير البيانات وأدوات السلامة البرية ---
-    st.markdown("### 🛠️ أدوات السلامة والتصدير البري")
-    col_gpx, col_qr = st.columns(2)
+    # --- مكتبة الأصوات والتصدير مع خيار الكتم ---
+    st.markdown("### 🛠️ الملاحة البرية والمؤثرات الصوتية")
+    col_gpx, col_sound = st.columns(2)
 
     with col_gpx:
-        st.markdown("#### 📂 ملف الإحداثيات للملاحة (OsmAnd والقارمن)")
-        gpx_data = generate_gpx(all_passages)
+        st.markdown("#### 📂 ملف الإحداثيات للملاحة (OsmAnd / Garmin)")
         st.download_button(
-            label="⬇️ تحميل GPX لجميع المعابر (OsmAnd والقارمن)",
-            data=gpx_data,
-            file_name=f"Saudi_Khofji_Passages.gpx",
+            label="⬇️ تحميل GPX لجميع المعابر",
+            data=generate_gpx(all_passages),
+            file_name="Khofji_Passages.gpx",
             mime="application/gpx+xml"
         )
 
-    with col_qr:
-        st.markdown("#### 🚨 رمز الاستغاثة البري (SOS Offline)")
-        if st.button("توليد QR Code للطوارئ"):
-            # تشغيل صوت تنبيه الطوارئ
-            play_audio_alert("https://www.soundjay.com/buttons/sounds/beep-07a.mp3")
-            
-            qr_bytes = generate_sos_qr(my_lat, my_lon, st.session_state["user_email"])
-            st.image(qr_bytes, caption="اعرض هذا الرمز لأي شخص لنسخ إحداثياتك بدون إنترنت!", width=200)
+    with col_sound:
+        st.markdown("#### 🔊 مكتبة أصوات البر والتحكم بالصوت")
+        sound_choice = st.selectbox("اختر الصوت المراد تشغيله:", [
+            "🔊 صفارة طوارئ وإنذار عالي (SOS Warning Siren)",
+            "🦅 أصوات حداء وتغاريد طيور برية",
+            "📢 نداء استجذاب وتدريب صقور"
+        ])
+        
+        btn_play, btn_mute = st.columns(2)
+        
+        with btn_play:
+            if st.button("▶️ تشغيل الصوت"):
+                if "صفارة" in sound_choice:
+                    st.session_state["play_sound_url"] = "https://www.soundjay.com/buttons/sounds/beep-07a.mp3"
+                elif "تغاريد" in sound_choice:
+                    st.session_state["play_sound_url"] = "https://www.soundjay.com/nature/sounds/birds-1.mp3"
+                else:
+                    st.session_state["play_sound_url"] = "https://www.soundjay.com/nature/sounds/eagle-cry-1.mp3"
+                st.rerun()
 
-    # تشفير البيانات الجغرافية
+        with btn_mute:
+            if st.button("🔇 كتم الصوت / إيقاف"):
+                st.session_state["play_sound_url"] = None
+                st.success("تم كتم الصوت.")
+                st.rerun()
+
+        # عرض مشغل الصوت إذا كان مفعلاً
+        render_audio_player()
+
     cipher = Fernet(st.session_state["crypto_key"])
     encrypted_coords = cipher.encrypt(f"{my_lat},{my_lon}".encode()).decode()
     st.sidebar.markdown("---")
