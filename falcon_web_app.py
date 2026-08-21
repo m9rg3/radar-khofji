@@ -152,9 +152,8 @@ else:
         folium.Rectangle(
             bounds=[[wpt["lat"] - 0.012, wpt["lon"] - 0.012], [wpt["lat"] + 0.012, wpt["lon"] + 0.012]],
             color=color, fill=True, fill_opacity=0.3, weight=2,
-            popup=f"<b>{wpt['name']}</b><br>{wpt['desc']}<br>📍 Lat: {wpt['lat']:.5f} | Lon: {wpt['lon']:.5f}" )
+            popup=f"<b>{wpt['name']}</b><br>{wpt['desc']}<br>📍 Lat: {wpt['lat']:.5f} | Lon: {wpt['lon']:.5f}"
         ).add_to(m)
-
     st_folium(m, width=700, height=450)
 
     # --- تصدير البيانات وأدوات السلامة البرية ---
