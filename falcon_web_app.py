@@ -1,25 +1,21 @@
-# يتطلب وجود folium و streamlit-folium في ملف requirements.txt
 import streamlit as st
 import requests
-import bcrypt
-import math
+import datetime
+import folium
+from streamlit_folium import st_folium
 from cryptography.fernet import Fernet
 import base64
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
-import datetime
-import folium
-from streamlit_folium import st_folium
 
-# --- 1. إعدادات الأمان والتشفير ---
-def hash_password(password):
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt())
-
-def check_password(password, hashed):
-    return bcrypt.checkpw(password.encode(), hashed)
-
+# --- 1. خوارزمية التشفير السيبراني المباشرة ---
 def derive_crypto_key(pin):
-    kdf = PBKDF2HMAC(algorithm=hashes.SHA256(), length=32, salt=b'SaudiFalconSalt', iterations=100000)
+    kdf = PBKDF2HMAC(
+        algorithm=hashes.SHA256(),
+        length=32,
+        salt=b'KhofjiRadarSalt2026',
+        iterations=100000
+    )
     return base64.urlsafe_b64encode(kdf.derive(pin.encode()))
 
 # --- 2. مفتاح الأرصاد الحقيقي والحي الخاص بك ---
@@ -48,37 +44,33 @@ def get_wind_direction_string(deg):
 st.set_page_config(page_title="رادار الخفجي المطور", layout="centered")
 st.title("🦅 رادار الخفجي الذكي لتعقب الصقور")
 
-if "users" not in st.session_state:
-    st.session_state["users"] = {"alddhmshi@gmail.com": hash_password("Khofji2026")}
-if "logged_in" not in st.session_state:
-    st.session_state["logged_in"] = False
+# التحقق من حالة الدخول الآمن
+if "secure_logged_in" not in st.session_state:
+    st.session_state["secure_logged_in"] = False
 
-if not st.session_state["logged_in"]:
-    st.subheader("🔐 لائحة تسجيل الدخول المشفرة الخاصة بالمسؤول")
-    email = st.text_input("البريد الإلكتروني الحقيقي")
-    password = st.text_input("الرقم السري الخاص", type="password")
-    user_pin = st.text_input("رقم التشفير الشخصي لحماية الإحداثيات (PIN)", type="password", max_chars=5)
+if not st.session_state["secure_logged_in"]:
+    st.subheader("🔐 بوابة الأمن السيبراني لرادار الخفجي")
     
-    if st.button("تسجيل الدخول إلى رادار الخفجي"):
-        email_clean = email.strip().lower()
-        if email_clean in st.session_state["users"] and check_password(password, st.session_state["users"][email_clean]):
-            if len(user_pin) >= 4:
-                st.session_state["logged_in"] = True
-                st.session_state["crypto_key"] = derive_crypto_key(user_pin)
-                st.success("تم التحقق بنجاح وجاري فتح الخريطة البرية السوداء...")
-                st.rerun()
-            else:
-                st.error("رقم الـ PIN يجب أن يكون من 4 إلى 5 أرقام.")
+    # خانة إدخال رقم التشفير المخصص لك مباشرة
+    input_pin = st.text_input("أدخل رقم التشفير الشخصي لفتح الرادار والخرائط الحية:", type="password", max_chars=4)
+    
+    if st.button("تفعيل الرادار والمصادقة"):
+        if input_pin == "2087":
+            st.session_state["secure_logged_in"] = True
+            st.session_state["crypto_key"] = derive_crypto_key("2087")
+            st.success("تم التوثيق بنجاح! جاري فك تشفير البيانات الجغرافية وتشغيل الخريطة السوداء...")
+            st.rerun()
         else:
-            st.error("بيانات الدخول غير صحيحة.")
+            st.error("⚠️ رقم التشفير غير صحيح. الوصول محظور للحفاظ على سرية الفياض.")
 else:
-    st.sidebar.success("🔓 متصل ومحمي بالتشفير AES-256")
-    if st.sidebar.button("تسجيل الخروج"):
-        st.session_state["logged_in"] = False
+    # --- بعد الدخول الناجح والمصادقة برقم 2087 ---
+    st.sidebar.success("🔓 النظام مشفر ومحمي بـ AES-256")
+    if st.sidebar.button("قفل الرادار (تسجيل خروج)"):
+        st.session_state["secure_logged_in"] = False
         st.rerun()
 
     falcon_type = st.radio("🎯 اختر فئة الصقر لتوقع تضاريس نزوله الميداني:", ("صقر حُر", "صقر شاهين"))
-    
+
     # ممرات ومواقع المقناص والجرود البرية في المملكة
     locations = {
         "الخفجي (المنطقة الشرقية)": {"lat": 28.438, "lon": 48.497},
@@ -87,11 +79,11 @@ else:
         "وادي السرحان (الجوف)": {"lat": 30.500, "lon": 38.500}
     }
     selected_zone = st.selectbox("🗺️ اختر موقع تواجدك البري الحالي لتحديث الخريطة السوداء والرياح الحية:", list(locations.keys()))
-    
+
     loc = locations[selected_zone]
     weather = get_live_weather(loc["lat"], loc["lon"])
     wind_dir_str = get_wind_direction_string(weather["wind_deg"])
-    
+
     # عرض الأرصاد الحية
     st.markdown("### 📊 خانة الأرصاد الجوية المباشرة عبر الأقمار الصناعية")
     col1, col2, col3 = st.columns(3)
@@ -101,15 +93,15 @@ else:
 
     # --- 🗺️ رسم الخريطة البرية المظلمة (نفس مظهر الصفحة السوداء السابقة) ---
     st.markdown("### 🗺️ خريطة المقناص الجغرافية والتضاريس (المظهر الأسود)")
-    
-    # هنا تم دمج ثيم الخريطة السوداء الفخمة CartoDB.DarkMatter لتطابق تصميمك السابق
+
+    # دمج ثيم الخريطة السوداء الفخمة CartoDB.DarkMatter لتطابق تصميمك السابق
     m = folium.Map(
         location=[loc["lat"], loc["lon"]], 
         zoom_start=9, 
         tiles="https://{s}://{z}/{x}/{y}{r}.png",
         attr="&copy; CartoDB"
     )
-    
+
     # تثبيت موقع الصقار الحالي بنقطة زرقاء مضيئة على الخريطة السوداء
     folium.Marker(
         [loc["lat"], loc["lon"]], 
@@ -117,17 +109,16 @@ else:
         tooltip="📍 موقع سيارتك الحالي",
         icon=folium.Icon(color="blue", icon="car", prefix="fa")
     ).add_to(m)
-    
+
     # خوارزمية تحليل التضاريس ونوع الأرض (شجر أو جبل) تلقائياً
     current_hour = datetime.datetime.now().hour
     is_grounded = (falcon_type == "صقر حُر" and (current_hour < 9 or current_hour > 16)) or (weather["wind_speed"] > 35 and wind_dir_str == "جنوبي معاكس")
-    
+
     # حساب نقطة النزل المتوقعة تبعد 15 كم في اتجاه المذري حسب اتجاه الريح الحية
     nest_lat = loc["lat"] + 0.13
     nest_lon = loc["lon"] - 0.16
-    
+
     if is_grounded:
-        # فحص نوع التضاريس بناءً على الوقت والطقس
         if current_hour > 16 or current_hour < 9:
             terrain_type = "🌳 أشجار طلح وسدر (مبيت وفياض شعبية محمية توفر المذري)"
             icon_name = "tree"
@@ -135,7 +126,6 @@ else:
             terrain_type = "⛰️ جبال وعرة وتلاع صخرية (حجر جوي اضطراري بسبب الرياح)"
             icon_name = "mountain"
         
-        # تثبيت علامة الطير الأرضي بلون ذهبي مضيء فوق الخريطة السوداء
         folium.Marker(
             [nest_lat, nest_lon],
             popup=f"<b>🎯 موقع نزول الطير:</b><br>{terrain_type}",
@@ -143,18 +133,16 @@ else:
             icon=folium.Icon(color="orange", icon=icon_name, prefix="fa")
         ).add_to(m)
         
-        # دائرة نطاق البحث والتحرك البري
         folium.Circle(
             location=[nest_lat, nest_lon],
             radius=4000,
-            color="#00ff66", # تلوين أخضر فسفوري متناسق مع التصميم الأسود
+            color="#00ff66", 
             fill=True,
             fill_opacity=0.1
         ).add_to(m)
         
         st.success(f"📌 **تحليل التضاريس والجرود:** الخوارزمية تتوقع استقرار الصقر حالياً فوق تضاريس من نوع **[{terrain_type}]**. اتبع النطاق الأخضر الفسفوري على الخريطة السوداء.")
     else:
-        # مسار طيران جوي عابر فوق الجرود البرية
         folium.Marker(
             [nest_lat + 0.3, nest_lon + 0.3],
             popup="✈️ ممر طيران جوي عابر ونشط فوق الأودية والجرود البرية",
@@ -162,12 +150,19 @@ else:
             icon=folium.Icon(color="red", icon="plane", prefix="fa")
         ).add_to(m)
         
-        # رسم خط الطيران الأحمر فوق الخريطة المظلمة
         folium.PolyLine(
             locations=[[loc["lat"], loc["lon"]], [nest_lat + 0.3, nest_lon + 0.3]],
             color="#00ff66", weight=3, opacity=0.8
         ).add_to(m)
         st.info("🔴 **تحليل التضاريس والجرود:** الصقر في حالة طيران شراعي جوي مرتفع عابر فوق الممرات البرية والنفود، ولم ينزل للأرض بعد.")
 
-    # عرض الخريطة السوداء بوسط واجهة التحكم
     st_folium(m, width=700, height=450)
+
+    # حماية وتعمية البيانات السيبرانية داخل ذاكرة التخزين السحابية للموقع
+    cipher = Fernet(st.session_state["crypto_key"])
+    raw_coords = f"{loc['lat']},{loc['lon']}"
+    encrypted_coords = cipher.encrypt(raw_coords.encode()).decode()
+    
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("**📁 التشفير الجغرافي الحكيم:**")
+    st.sidebar.code(encrypted_coords[:32] + "...")
