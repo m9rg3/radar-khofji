@@ -28,7 +28,6 @@ def derive_crypto_key(pin):
     return base64.urlsafe_b64encode(derived)
 
 # --- 3. تهيئة حالات الجلسة (Session State) ---
-# تفعيل الدخول الافتراضي فور فتح التطبيق لتفادي تعليق الشاشة
 if "secure_logged_in" not in st.session_state:
     st.session_state["secure_logged_in"] = True
 if "user_email" not in st.session_state:
@@ -36,7 +35,17 @@ if "user_email" not in st.session_state:
 if "crypto_key" not in st.session_state:
     st.session_state["crypto_key"] = derive_crypto_key("2087")
 
-# --- 4. جلب بيانات الطقس وتوليد ملفات الملاحة والـ QR ---
+# --- 4. دالة التنبيه الصوتي ---
+def play_audio_alert(audio_url):
+    sound_html = f"""
+        <iframe src="{audio_url}" allow="autoplay" style="display:none" id="iframeAudio"></iframe>
+        <audio autoplay>
+            <source src="{audio_url}" type="audio/mp3">
+        </audio>
+    """
+    st.components.v1.html(sound_html, height=0)
+
+# --- 5. جلب بيانات الطقس وتوليد ملفات الملاحة والـ QR ---
 API_KEY = "29ea16b1dcef9de9338b290ab132c6c8" 
 
 def get_live_weather(lat, lon):
@@ -82,7 +91,7 @@ def generate_sos_qr(lat, lon, email):
     img.save(buf)
     return buf.getvalue()
 
-# --- 5. شاشة المصادقة والدخول السريعة المباشرة ---
+# --- 6. شاشة المصادقة والدخول السريعة المباشرة ---
 if not st.session_state["secure_logged_in"]:
     st.subheader("🔐 تسجيل الدخول ونظام حماية البر")
     
@@ -108,7 +117,7 @@ if not st.session_state["secure_logged_in"]:
         else:
             st.error("⚠️ بيانات الدخول غير صحيحة.")
 
-# --- 6. الواجهة الرئيسية V5.1 Ultimate ---
+# --- 7. الواجهة الرئيسية V5.1 Ultimate ---
 else:
     st.sidebar.success(f"🔓 المستكشف: {st.session_state['user_email']}")
     if st.sidebar.button("قفل النظام"):
@@ -183,6 +192,9 @@ else:
     with col_qr:
         st.markdown("#### 🚨 رمز الاستغاثة البري (SOS Offline)")
         if st.button("توليد QR Code للطوارئ"):
+            # تشغيل صوت تنبيه الطوارئ عند الضغط على الزر
+            play_audio_alert("https://www.soundjay.com/buttons/sounds/beep-07a.mp3")
+            
             qr_bytes = generate_sos_qr(my_lat, my_lon, st.session_state["user_email"])
             st.image(qr_bytes, caption="اعرض هذا الرمز لأي شخص لنسخ إحداثياتك بدون إنترنت!", width=200)
 
