@@ -3,12 +3,19 @@ import requests
 import datetime
 import folium
 from streamlit_folium import st_folium
+import bcrypt
 from cryptography.fernet import Fernet
 import base64
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
 
 # --- 1. خوارزمية التشفير السيبراني المباشرة ---
+def hash_password(password):
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt())
+
+def check_password(password, hashed):
+    return bcrypt.checkpw(password.encode(), hashed)
+
 def derive_crypto_key(pin):
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
@@ -40,36 +47,42 @@ def get_wind_direction_string(deg):
     if 247.5 <= deg < 292.5: return "غربي شديد"
     return "شرقي"
 
-# --- 3. بناء واجهة رادار الخفجي المطور بالخلفية المظلمة ---
+# --- 3. واجهة رادار الخفجي المطور بالمظهر الأسود ---
 st.set_page_config(page_title="رادار الخفجي المطور", layout="centered")
 st.title("🦅 رادار الخفجي الذكي لتعقب الصقور")
 
-# التحقق من حالة الدخول الآمن
+# إعداد قاعدة البيانات وتأكيد التشفير والحسابات الحقيقية
+if "users" not in st.session_state:
+    st.session_state["users"] = {"alddhmshi@gmail.com": hash_password("Khofji2026")}
 if "secure_logged_in" not in st.session_state:
     st.session_state["secure_logged_in"] = False
 
 if not st.session_state["secure_logged_in"]:
-    st.subheader("🔐 بوابة الأمن السيبراني لرادار الخفجي")
+    st.subheader("🔐 لائحة تسجيل الدخول المشفرة الخاصة بالمسؤول")
     
-    # خانة إدخال رقم التشفير المخصص لك مباشرة
-    input_pin = st.text_input("أدخل رقم التشفير الشخصي لفتح الرادار والخرائط الحية:", type="password", max_chars=4)
+    # طلب البريد والرقم السري والـ PIN معاً كما أردت
+    email = st.text_input("البريد الإلكتروني الحقيقي")
+    password = st.text_input("الرقم السري الخاص", type="password")
+    input_pin = st.text_input("رقم التشفير الشخصي لحماية الإحداثيات (PIN):", type="password", max_chars=4)
     
-    if st.button("تفعيل الرادار والمصادقة"):
-        if input_pin == "2087":
-            st.session_state["secure_logged_in"] = True
-            st.session_state["crypto_key"] = derive_crypto_key("2087")
-            st.success("تم التوثيق بنجاح! جاري فك تشفير البيانات الجغرافية وتشغيل الخريطة السوداء...")
-            st.rerun()
+    if st.button("تفعيل الرادار والمصادقة الأمنية"):
+        email_clean = email.strip().lower()
+        if email_clean in st.session_state["users"] and check_password(password, st.session_state["users"][email_clean]):
+            if input_pin == "2087":
+                st.session_state["secure_logged_in"] = True
+                st.session_state["crypto_key"] = derive_crypto_key("2087")
+                st.success("تم التوثيق بنجاح! جاري فك تشفير البيانات الجغرافية وتشغيل الخريطة السوداء البرية...")
+                st.rerun()
+            else:
+                st.error("⚠️ رقم التشفير (PIN) غير صحيح.")
         else:
-            st.error("⚠️ رقم التشفير غير صحيح. الوصول محظور للحفاظ على سرية الفياض.")
+            st.error("⚠️ البريد الإلكتروني أو الرقم السري غير صحيح.")
 else:
-    # --- بعد الدخول الناجح والمصادقة برقم 2087 ---
+    # --- بعد الدخول الناجح بالمصادقة الكاملة ---
     st.sidebar.success("🔓 النظام مشفر ومحمي بـ AES-256")
     if st.sidebar.button("قفل الرادار (تسجيل خروج)"):
         st.session_state["secure_logged_in"] = False
         st.rerun()
-
-    falcon_type = st.radio("🎯 اختر فئة الصقر لتوقع تضاريس نزوله الميداني:", ("صقر حُر", "صقر شاهين"))
 
     # ممرات ومواقع المقناص والجرود البرية في المملكة
     locations = {
@@ -91,32 +104,37 @@ else:
     col2.metric("💨 سرعة الرياح الحية", f"{weather['wind_speed']:.1f} كم/س")
     col3.metric("🧭 اتجاه الرياح الحالي", wind_dir_str)
 
-    # --- 🗺️ رسم الخريطة البرية المظلمة (نفس مظهر الصفحة السوداء السابقة) ---
-    st.markdown("### 🗺️ خريطة المقناص الجغرافية والتضاريس (المظهر الأسود)")
+    # --- 🗺️ رسم الخريطة البرية المظلمة (الأكيدة والتفاعلية) ---
+    st.markdown("### 🗺️ خريطة المقناص الجغرافية والتضاريس (المظهر الأسود المعتمد)")
 
-    # دمج ثيم الخريطة السوداء الفخمة CartoDB.DarkMatter لتطابق تصميمك السابق
+    # استخدام الرابط المباشر الصحيح لإظهار الخريطة السوداء الفخمة
     m = folium.Map(
         location=[loc["lat"], loc["lon"]], 
         zoom_start=9, 
-        tiles="https://{s}://{z}/{x}/{y}{r}.png",
+        tiles="https://{s}://{z}/{x}/{y}.png",
         attr="&copy; CartoDB"
     )
 
-    # تثبيت موقع الصقار الحالي بنقطة زرقاء مضيئة على الخريطة السوداء
+    # موقع الصقار الحالي (سيارتك) بنقطة زرقاء
     folium.Marker(
         [loc["lat"], loc["lon"]], 
-        popup=f"موقعك الميداني: {selected_zone}", 
-        tooltip="📍 موقع سيارتك الحالي",
+        popup=f"موقعك الميداني الحالي", 
+        tooltip="📍 موقع سيارتك",
         icon=folium.Icon(color="blue", icon="car", prefix="fa")
     ).add_to(m)
 
-    # خوارزمية تحليل التضاريس ونوع الأرض (شجر أو جبل) تلقائياً
+    # خوارزميات الطقس المدمجة تلقائياً (تحسب الحر والشاهين معاً دون أزرار)
     current_hour = datetime.datetime.now().hour
-    is_grounded = (falcon_type == "صقر حُر" and (current_hour < 9 or current_hour > 16)) or (weather["wind_speed"] > 35 and wind_dir_str == "جنوبي معاكس")
+    
+    # الخوارزمية المدمجة تفحص شروط هبوط الطيور تلقائياً
+    is_grounded = (current_hour < 9 or current_hour > 16) or (weather["wind_speed"] > 30 and wind_dir_str == "جنوبي معاكس")
 
-    # حساب نقطة النزل المتوقعة تبعد 15 كم في اتجاه المذري حسب اتجاه الريح الحية
-    nest_lat = loc["lat"] + 0.13
-    nest_lon = loc["lon"] - 0.16
+    # حساب نقطة النزل المتوقعة تبعد 16 كم في جهة المذري الجغرافي
+    nest_lat = loc["lat"] + 0.14
+    nest_lon = loc["lon"] - 0.17
+
+    # توليد رابط الانتقال المباشر وتمرير الإحداثيات لتطبيق عثمان (OsmAnd)
+    osmand_link = f"https://osmand.net{nest_lat}&lon={nest_lon}&z=12"
 
     if is_grounded:
         if current_hour > 16 or current_hour < 9:
@@ -126,10 +144,18 @@ else:
             terrain_type = "⛰️ جبال وعرة وتلاع صخرية (حجر جوي اضطراري بسبب الرياح)"
             icon_name = "mountain"
         
+        # دبوس الطير التوقعي مع نافذة الربط بتطبيق عثمان
+        popup_html = f"""
+        <div style="font-family:sans-serif; text-align:right; color:black;">
+            <b>🎯 موقع الصقر التوقعي:</b><br>{terrain_type}<br><br>
+            <a href="{osmand_link}" target="_blank" style="background-color:#00ff66; color:black; padding:8px; border-radius:5px; text-decoration:none; font-weight:bold; display:inline-block;">🗺️ افتح الملاحة في تطبيق عثمان البري</a>
+        </div>
+        """
+        
         folium.Marker(
             [nest_lat, nest_lon],
-            popup=f"<b>🎯 موقع نزول الطير:</b><br>{terrain_type}",
-            tooltip="🟡 موقع الصقر الحالي على الأرض",
+            popup=folium.Popup(popup_html, max_width=250),
+            tooltip="🟡 رصد الصقر على الأرض - اضغط للتوجيه",
             icon=folium.Icon(color="orange", icon=icon_name, prefix="fa")
         ).add_to(m)
         
@@ -141,12 +167,19 @@ else:
             fill_opacity=0.1
         ).add_to(m)
         
-        st.success(f"📌 **تحليل التضاريس والجرود:** الخوارزمية تتوقع استقرار الصقر حالياً فوق تضاريس من نوع **[{terrain_type}]**. اتبع النطاق الأخضر الفسفوري على الخريطة السوداء.")
+        st.success(f"📌 **تحليل تضاريس المنظومة المدمجة:** الخوارزمية تتوقع استقرار الطيور حالياً فوق تضاريس من نوع **[{terrain_type}]**. اضغط على الدبوس الأصفر بالخريطة وافتح خيار الملاحة لتطبيق عثمان البري.")
     else:
+        popup_html_flight = f"""
+        <div style="font-family:sans-serif; text-align:right; color:black;">
+            <b>✈️ ممر هجرة جوي نشط</b><br><br>
+            <a href="{osmand_link}" target="_blank" style="background-color:#00ff66; color:black; padding:8px; border-radius:5px; text-decoration:none; font-weight:bold; display:inline-block;">🗺️ تتبع المسار الجوي في تطبيق عثمان</a>
+        </div>
+        """
+        
         folium.Marker(
             [nest_lat + 0.3, nest_lon + 0.3],
-            popup="✈️ ممر طيران جوي عابر ونشط فوق الأودية والجرود البرية",
-            tooltip="🔴 الصقر يحلق الآن جوياً",
+            popup=folium.Popup(popup_html_flight, max_width=250),
+            tooltip="🔴 الصقر يحلق الآن جوياً - اضغط للتتبع",
             icon=folium.Icon(color="red", icon="plane", prefix="fa")
         ).add_to(m)
         
@@ -154,15 +187,15 @@ else:
             locations=[[loc["lat"], loc["lon"]], [nest_lat + 0.3, nest_lon + 0.3]],
             color="#00ff66", weight=3, opacity=0.8
         ).add_to(m)
-        st.info("🔴 **تحليل التضاريس والجرود:** الصقر في حالة طيران شراعي جوي مرتفع عابر فوق الممرات البرية والنفود، ولم ينزل للأرض بعد.")
+        st.info("🔴 **تحليل تضاريس المنظومة المدمجة:** الطيور في حالة طيران شراعي عابر فوق ممرات الملاحة الجوية للبر.")
 
+    # تشغيل الخريطة المظلمة بمنتصف واجهة رادار الخفجي
     st_folium(m, width=700, height=450)
 
-    # حماية وتعمية البيانات السيبرانية داخل ذاكرة التخزين السحابية للموقع
+    # تشفير البيانات الجغرافية
     cipher = Fernet(st.session_state["crypto_key"])
     raw_coords = f"{loc['lat']},{loc['lon']}"
     encrypted_coords = cipher.encrypt(raw_coords.encode()).decode()
-    
     st.sidebar.markdown("---")
     st.sidebar.markdown("**📁 التشفير الجغرافي الحكيم:**")
     st.sidebar.code(encrypted_coords[:32] + "...")
